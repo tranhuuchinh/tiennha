@@ -1,26 +1,223 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  color-scheme: light;
+  --bg: #f4f4f1;
+  --surface: #ffffff;
+  --surface-2: #f1f0ec;
+  --surface-3: #e7e6e0;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --line: rgba(11, 11, 11, 0.08);
+  --line-strong: rgba(11, 11, 11, 0.14);
+  --primary: #111110;
+  --primary-ink: #ffffff;
+  --good: #0a7d0a;
+  --good-soft: #e3f4e1;
+  --danger: #c93636;
+  --danger-soft: #fbe9e8;
+  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 4px 16px rgba(11, 11, 11, 0.04);
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* màu theo loại chi phí (đã kiểm tra mù màu, thứ tự cố định) */
+  --c-nha: #2a78d6;
+  --c-dien: #eb6834;
+  --c-nuoc: #1baf7a;
+  --c-phiql: #eda100;
+  --c-xe: #e87ba4;
+  --c-khac: #008300;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --bg: #0f0f0e;
+    --surface: #1c1c1b;
+    --surface-2: #252524;
+    --surface-3: #30302e;
+    --ink: #f7f7f5;
+    --ink-2: #c3c2b7;
+    --muted: #8f8d86;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.15);
+    --primary: #f7f7f5;
+    --primary-ink: #111110;
+    --good: #2fbf3a;
+    --good-soft: rgba(12, 163, 12, 0.16);
+    --danger: #ef6b6b;
+    --danger-soft: rgba(208, 59, 59, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+
+    --c-nha: #3987e5;
+    --c-dien: #d95926;
+    --c-nuoc: #199e70;
+    --c-phiql: #c98500;
+    --c-xe: #d55181;
+    --c-khac: #008300;
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--font-app), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --shadow-card: var(--shadow);
+}
+
+html {
+  background: var(--bg);
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-feature-settings: "cv11";
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+[role="button"] {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+input,
+textarea {
+  font-size: 16px; /* tránh iOS tự zoom */
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.animate-fade {
+  animation: fade-in 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* Bottom sheet (mobile) / modal (desktop) */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+.sheet-in {
+  animation: sheet-up 0.34s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.sheet-out {
+  animation: sheet-down 0.22s cubic-bezier(0.4, 0, 1, 1) both;
+}
+.overlay-in {
+  animation: fade-in 0.25s ease-out both;
+}
+.overlay-out {
+  animation: fade-out 0.22s ease-in both;
+}
+@media (min-width: 640px) {
+  .sheet-in {
+    animation-name: pop-in;
+    animation-duration: 0.24s;
+  }
+  .sheet-out {
+    animation-name: pop-out;
+    animation-duration: 0.16s;
+  }
+}
+
+@layer components {
+  .input {
+    height: 3rem;
+    width: 100%;
+    border-radius: 1rem;
+    background: var(--surface-2);
+    padding: 0 1rem;
+    outline: none;
+    transition: box-shadow 0.15s;
+  }
+  .input:focus {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ink) 20%, transparent);
+  }
+  .input::placeholder {
+    color: var(--muted);
+  }
+  .label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-2);
+  }
+  .card {
+    background: var(--surface);
+    border-radius: 24px;
+    box-shadow:
+      var(--shadow),
+      0 0 0 1px var(--line);
+  }
 }

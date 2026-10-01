@@ -1,17 +1,22 @@
 {
-  "name": "tiennha-tmp",
+  "name": "tiennha",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sheet:push": "tsx --env-file-if-exists=.env.local scripts/sheet-push.ts",
+    "sheet:pull": "tsx --env-file-if-exists=.env.local scripts/sheet-pull.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "lucide-react": "^1.49.0",
     "next": "16.3.8",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "swr": "^2.5.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +26,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

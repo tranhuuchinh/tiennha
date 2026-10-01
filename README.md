@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tiền nhà
 
-## Getting Started
+Web app nhỏ để chia tiền nhà, điện, nước… cho nhà ở ghép, dữ liệu lưu trên **Google Sheets**, deploy miễn phí trên **Vercel**.
 
-First, run the development server:
+- Mỗi tháng nhập các khoản chi (tiền nhà, điện, nước, phí quản lý, gửi xe, khác), app tự chia cho từng người
+- **Chia đều** cho những người được chọn, hoặc **chia riêng** từng người (vd. phòng to đóng nhiều hơn)
+- Ghi lại **ai đã trả tiền trước** để được trừ khi đóng
+- Khoản **giảm trừ** (vd. chủ nhà giảm tiền), đánh dấu **đã đóng** cho từng người
+- **Gửi nhóm**: tạo sẵn tin nhắn tổng kết để dán vào Zalo/Messenger
+- Sao chép khoản cố định từ tháng trước, xem **lịch sử** các tháng
+- Giao diện mobile‑first, chế độ sáng/tối, thêm được ra màn hình chính như app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Cách tính
+
+```
+Phần của mỗi người = tổng các phần được chia cho người đó
+Cần đóng           = Phần của mỗi người − số tiền người đó đã trả trước cho nhà
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Số tiền nhập theo đơn vị **nghìn đồng (k)**, giống sheet cũ.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Dữ liệu trên Google Sheets
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+App tự tạo 3 tab (không đụng tới các tab khác có sẵn trong file):
 
-## Learn More
+| Tab        | Cột                                                                                          |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| `members`  | ID · Tên · Đang ở                                                                            |
+| `expenses` | ID · Tháng · Loại · Tên khoản · Số tiền (k) · Người ứng · Cách chia · Chia cho · Ghi chú · … |
+| `months`   | Tháng · Ghi chú · Đã đóng · Sửa lúc                                                          |
 
-To learn more about Next.js, take a look at the following resources:
+`Cách chia` là `đều` (Chia cho = `id1, id2`) hoặc `riêng` (Chia cho = `id1: 1800, id2: 3100`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Cài đặt
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 1. Service account Google
 
-## Deploy on Vercel
+1. Vào [Google Cloud Console](https://console.cloud.google.com) → tạo project
+2. **APIs & Services → Library** → bật **Google Sheets API**
+3. **IAM & Admin → Service Accounts** → tạo service account → tab **Keys** → **Add key → JSON**
+4. Mở Google Sheet → **Share** → thêm email của service account với quyền **Editor**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 2. Chạy trên máy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install
+cp .env.example .env.local   # điền GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_FILE, APP_PASSCODE
+npm run dev
+```
+
+Nếu chưa cấu hình Google Sheets, bản dev sẽ tự dùng file `.data/db.json` để thử.
+
+### 3. Deploy lên Vercel
+
+Import repo trên [vercel.com/new](https://vercel.com/new) và thêm Environment Variables:
+
+| Biến                          | Giá trị                                                       |
+| ----------------------------- | ------------------------------------------------------------- |
+| `GOOGLE_SHEET_ID`             | ID của sheet (đoạn giữa `/d/` và `/edit` trong link)          |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | dán nguyên nội dung file JSON key                             |
+| `APP_PASSCODE`                | mã truy cập chung cho cả nhà (để trống = không cần đăng nhập) |
+
+## Script
+
+```bash
+npm run sheet:pull -- backup.json   # sao lưu dữ liệu từ sheet ra file JSON
+npm run sheet:push -- data.json     # ghi đè 3 tab của app bằng file JSON
+```
+
+## Công nghệ
+
+Next.js (App Router) · React · Tailwind CSS · SWR · Google Sheets API (REST, service account)

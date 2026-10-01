@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# dữ liệu & khoá bí mật — không bao giờ commit
+/.data/
+/.secrets/
+/.claude/
+!.env.example
