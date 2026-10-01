@@ -3,13 +3,16 @@
  *
  *   npm run sheet:pull -- backup.json
  */
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { getStore } from "../src/lib/server/store";
 
-const file = process.argv[2] ?? `.data/backup-${new Date().toISOString().slice(0, 10)}.json`;
+// ngày theo giờ máy (sv-SE cho ra dạng YYYY-MM-DD)
+const file = process.argv[2] ?? `.data/backup-${new Date().toLocaleDateString("sv-SE")}.json`;
 async function main() {
   const store = getStore();
   const data = await store.load();
+  mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(data, null, 2));
   console.log(`Đã lưu ${data.expenses.length} khoản chi từ ${store.kind} vào ${file}`);
 }
