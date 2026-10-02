@@ -6,11 +6,13 @@ export function splitLabel(summary: MonthSummary, expenseId: string, memberName:
   const e = summary.expenses.find((x) => x.id === expenseId);
   if (!e) return "";
   if (e.split.mode === "custom") return "chia riêng";
-  const n = e.split.members.length;
-  const total = summary.people.length;
-  if (n === total) return `chia đều ${n}`;
-  if (n === 1) return `riêng ${memberName(e.split.members[0])}`;
-  return `chia ${e.split.members.map(memberName).join(", ")}`;
+  const members = e.split.members;
+  const n = members.length;
+  const skipped = summary.people.filter((p) => !members.includes(p.member.id)).map((p) => p.member.name);
+  if (!skipped.length) return `chia đều ${n}`;
+  if (n === 1) return `riêng ${memberName(members[0])}`;
+  if (skipped.length <= 2) return `chia đều ${n} · trừ ${skipped.join(", ")}`;
+  return `chia ${members.map(memberName).join(", ")}`;
 }
 
 export function buildShareText(summary: MonthSummary, memberName: (id: string) => string, url?: string) {

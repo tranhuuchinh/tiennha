@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Minus, Trash2 } from "lucide-react";
+import { Check, Minus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import type { Actions } from "@/lib/client";
 import { amountToInput, formatVND, parseAmount } from "@/lib/format";
@@ -102,6 +102,7 @@ export function ExpenseForm({
     (m) => m.active || s.members.includes(m.id) || s.shares[m.id] !== undefined || s.paidBy === m.id,
   );
   const hue = (id: string) => memberHue(data.members, id);
+  const skipped = people.filter((m) => !s.members.includes(m.id));
 
   const sign = s.negative ? -1 : 1;
   const amount = parseAmount(s.amount);
@@ -236,26 +237,41 @@ export function ExpenseForm({
                 autoFocus={!editing}
               />
             </Field>
-            <div className="flex flex-wrap gap-2">
-              {people.map((m) => {
-                const on = s.members.includes(m.id);
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => set({ members: on ? s.members.filter((x) => x !== m.id) : [...s.members, m.id] })}
-                    className={cx(
-                      "flex h-10 items-center gap-2 rounded-full pl-1 pr-3.5 text-sm font-medium ring-1 transition active:scale-[0.97]",
-                      on ? "bg-primary text-primary-ink ring-transparent" : "bg-surface text-ink-2 ring-line-strong",
-                    )}
-                  >
-                    <Avatar name={m.name} hue={hue(m.id)} size={30} />
-                    {m.name}
-                    {on && <Check className="size-3.5" strokeWidth={3} />}
-                  </button>
-                );
-              })}
+            <div className="space-y-2">
+              <span className="label">Ai phải trả khoản này?</span>
+              <div className="flex flex-wrap gap-2">
+                {people.map((m) => {
+                  const on = s.members.includes(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={on ? `${m.name}: có trả, bấm để bỏ qua` : `${m.name}: bỏ qua, bấm để tính lại`}
+                      onClick={() => set({ members: on ? s.members.filter((x) => x !== m.id) : [...s.members, m.id] })}
+                      className={cx(
+                        "flex h-10 items-center gap-2 rounded-full pl-1 pr-3.5 text-sm font-medium ring-1 transition active:scale-[0.97]",
+                        on ? "bg-primary text-primary-ink ring-transparent" : "bg-surface text-muted ring-line-strong",
+                      )}
+                    >
+                      <span className={cx("transition", !on && "opacity-40 grayscale")}>
+                        <Avatar name={m.name} hue={hue(m.id)} size={30} />
+                      </span>
+                      <span className={cx(!on && "line-through decoration-1")}>{m.name}</span>
+                      {on ? (
+                        <Check className="size-3.5" strokeWidth={3} />
+                      ) : (
+                        <X className="size-3.5" strokeWidth={2.5} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[13px] text-muted">
+                {skipped.length && s.members.length
+                  ? `Bỏ qua ${skipped.map((m) => m.name).join(", ")}: phần này chia cho ${s.members.length} người còn lại.`
+                  : "Bấm vào tên để bỏ qua người không cần trả khoản này."}
+              </p>
             </div>
             {touched && errors.members && <p className="text-sm text-danger">{errors.members}</p>}
           </>

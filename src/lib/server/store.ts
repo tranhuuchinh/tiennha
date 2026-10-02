@@ -27,6 +27,8 @@ export interface Store {
 export class NotConfiguredError extends Error {}
 
 export function getStore(): Store {
+  // DATA_STORE=file: chạy thử trên máy bằng .data/db.json, không đụng sheet thật
+  if (process.env.DATA_STORE === "file" && process.env.NODE_ENV !== "production") return fileStore;
   const creds = readGoogleCreds();
   const sheetId = process.env.GOOGLE_SHEET_ID;
   if (creds && sheetId) return new SheetsStore(new SheetsClient(sheetId, creds));
