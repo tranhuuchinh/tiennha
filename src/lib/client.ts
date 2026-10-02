@@ -95,6 +95,25 @@ export function useAppData() {
       );
     },
 
+    updateExpenses(updates: { id: string; input: ExpenseInput }[]) {
+      const byId = new Map(updates.map((u) => [u.id, u.input]));
+      return run(
+        () =>
+          api<{ expenses: Expense[] }>(
+            "/api/expenses",
+            json("PATCH", { updates: updates.map((u) => ({ id: u.id, ...u.input })) }),
+          ),
+        (d) => ({
+          ...d,
+          expenses: d.expenses.map((e) => (byId.has(e.id) ? draftExpense(byId.get(e.id)!, e.id, e.createdAt) : e)),
+        }),
+        (d, r) => {
+          const saved = new Map(r.expenses.map((e) => [e.id, e]));
+          return { ...d, expenses: d.expenses.map((e) => saved.get(e.id) ?? e) };
+        },
+      );
+    },
+
     deleteExpense(id: string) {
       const drop = (d: DataResponse) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== id) });
       return run(() => api(`/api/expenses/${id}`, json("DELETE")), drop, drop);

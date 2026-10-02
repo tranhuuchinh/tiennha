@@ -18,11 +18,14 @@ export interface Store {
   load(): Promise<AppData>;
   createExpenses(inputs: ExpenseInput[]): Promise<Expense[]>;
   updateExpense(id: string, input: ExpenseInput): Promise<Expense>;
+  updateExpenses(updates: ExpenseUpdate[]): Promise<Expense[]>;
   deleteExpense(id: string): Promise<void>;
   saveMonth(meta: Omit<MonthMeta, "updatedAt">): Promise<MonthMeta>;
   saveMembers(members: Member[]): Promise<Member[]>;
   replaceAll(data: AppData): Promise<void>;
 }
+
+export type ExpenseUpdate = { id: string; input: ExpenseInput };
 
 export class NotConfiguredError extends Error {}
 
@@ -290,6 +293,30 @@ class SheetsStore implements Store {
     throw new Error("Sheet đang thay đổi liên tục, thử lại sau giây lát.");
   }
 
+  /** Cập nhật nhiều khoản cùng lúc: đọc cột một lần, ghi một lần */
+  updateExpenses(updates: ExpenseUpdate[]) {
+    return this.queue(async () => {
+      await this.ensureTabs();
+      const rows = await this.client.get(`${TABS.expenses.title}!A:K`);
+      const index = new Map(rows.map((r, i) => [str(r[0]), i] as const).filter(([id, i]) => id && i > 0));
+      const missing = updates.filter((u) => !index.has(u.id));
+      if (missing.length) throw new Error("Có khoản chi vừa bị xoá, tải lại trang rồi thử lại.");
+      const saved = updates.map((u) => {
+        const row = index.get(u.id)!;
+        return { row: row + 1, expense: buildExpense(u.input, u.id, str(rows[row][9]) || now()) };
+      });
+      if (saved.length) {
+        await this.client.batchUpdateValues(
+          saved.map(({ row, expense }) => ({
+            range: `${TABS.expenses.title}!A${row}:K${row}`,
+            values: [expenseToRow(expense)],
+          })),
+        );
+      }
+      return saved.map((x) => x.expense);
+    });
+  }
+
   updateExpense(id: string, input: ExpenseInput) {
     return this.queue(async () => {
       await this.ensureTabs();
@@ -388,6 +415,18 @@ class FileStore implements Store {
       data.expenses.push(...created);
       return created;
     });
+  }
+
+  updateExpenses(updates: ExpenseUpdate[]) {
+    return this.change((data) =>
+      updates.map((u) => {
+        const idx = data.expenses.findIndex((e) => e.id === u.id);
+        if (idx === -1) throw new Error("Có khoản chi vừa bị xoá, tải lại trang rồi thử lại.");
+        const expense = buildExpense(u.input, u.id, data.expenses[idx].createdAt);
+        data.expenses[idx] = expense;
+        return expense;
+      }),
+    );
   }
 
   updateExpense(id: string, input: ExpenseInput) {

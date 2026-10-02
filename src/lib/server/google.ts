@@ -118,6 +118,14 @@ export class SheetsClient {
     });
   }
 
+  /** Ghi nhiều vùng trong một lần gọi API */
+  batchUpdateValues(data: { range: string; values: CellValue[][] }[]) {
+    return this.request("/values:batchUpdate", {
+      method: "POST",
+      body: JSON.stringify({ valueInputOption: "RAW", data }),
+    });
+  }
+
   append(range: string, values: CellValue[][]) {
     return this.request(
       `/values/${encodeURIComponent(range)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,

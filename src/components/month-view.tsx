@@ -1,14 +1,15 @@
 "use client";
 
-import { Check, ChevronDown, Copy, Pencil, Plus, Share2 } from "lucide-react";
-import { useState } from "react";
+import { Check, ChevronDown, Copy, ListChecks, Pencil, Plus, Share2 } from "lucide-react";
+import { useCallback, useState } from "react";
 import { sharesOf, type MemberSummary, type MonthSummary } from "@/lib/calc";
 import type { Actions } from "@/lib/client";
 import { formatK, formatMonth, formatVND } from "@/lib/format";
 import { buildShareText, splitLabel } from "@/lib/share";
 import { CATEGORIES, type AppData, type CategoryKey, type Expense, type ExpenseInput } from "@/lib/types";
 import { CategoryBar, CategoryLegend } from "./category-bar";
-import { Avatar, Button, CategoryIcon, categoryColor, cx, memberHue, toast } from "./ui";
+import { PayItemsForm, type PayItemsState } from "./pay-items";
+import { Avatar, Button, CategoryIcon, categoryColor, cx, memberHue, Sheet, toast } from "./ui";
 
 type Props = {
   data: AppData;
@@ -30,30 +31,9 @@ export function MonthView({ data, summary, actions, onAdd, onEdit }: Props) {
     actions.saveMonth({ month: summary.month, note: meta?.note ?? "", paid: [...paid] });
   }
 
-  /** Bỏ qua / tính lại một người trong khoản chia đều; phần tiền chia lại cho những người còn lại */
-  async function setSkipped(e: Expense, memberId: string, skip: boolean) {
-    if (e.split.mode !== "equal") return;
-    const ids = new Set(e.split.members);
-    if (skip) ids.delete(memberId);
-    else ids.add(memberId);
-    if (!ids.size) return toast("Phải còn ít nhất 1 người trả khoản này", "error");
-    const order = data.members.map((m) => m.id);
-    const members = [...ids].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    const ok = await actions.updateExpense(e.id, {
-      month: e.month,
-      category: e.category,
-      title: e.title,
-      amount: e.amount,
-      paidBy: e.paidBy,
-      split: { mode: "equal", members },
-      note: e.note,
-    });
-    if (ok) {
-      toast(
-        skip ? `${memberName(memberId)} không cần trả "${e.title}"` : `${memberName(memberId)} trả lại "${e.title}"`,
-      );
-    }
-  }
+  const [payFor, setPayFor] = useState<PayItemsState | null>(null);
+  const [payOpen, setPayOpen] = useState(false);
+  const closePay = useCallback(() => setPayOpen(false), []);
 
   async function share() {
     const text = buildShareText(summary, memberName, window.location.origin);
@@ -133,7 +113,10 @@ export function MonthView({ data, summary, actions, onAdd, onEdit }: Props) {
                 (e) => e.split.mode === "equal" && !e.split.members.includes(p.member.id),
               )}
               onTogglePaid={() => togglePaid(p.member.id)}
-              onSkip={(e, skip) => setSkipped(e, p.member.id, skip)}
+              onChooseItems={() => {
+                setPayFor({ key: Date.now(), memberId: p.member.id });
+                setPayOpen(true);
+              }}
               delay={i * 40}
             />
           ))}
@@ -167,6 +150,18 @@ export function MonthView({ data, summary, actions, onAdd, onEdit }: Props) {
         </div>
         <QuickAdd onAdd={onAdd} />
       </section>
+      <Sheet open={payOpen} onClose={closePay} title="Chọn khoản phải trả">
+        {payFor && (
+          <PayItemsForm
+            key={payFor.key}
+            data={data}
+            month={summary.month}
+            memberId={payFor.memberId}
+            actions={actions}
+            onDone={closePay}
+          />
+        )}
+      </Sheet>
     </div>
   );
 }
@@ -214,15 +209,15 @@ function PersonCard({
   hue,
   skipped,
   onTogglePaid,
-  onSkip,
+  onChooseItems,
   delay,
 }: {
   person: MemberSummary;
   hue: number;
-  /** các khoản chia đều mà người này được bỏ qua */
+  /** các khoản chia đều mà người này không cần trả */
   skipped: Expense[];
   onTogglePaid: () => void;
-  onSkip: (expense: Expense, skip: boolean) => void;
+  onChooseItems: () => void;
   delay: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -232,7 +227,7 @@ function PersonCard({
     p.byCategory.nha ? `Nhà ${formatK(p.byCategory.nha)}` : null,
     living ? `Sinh hoạt ${formatK(living)}` : null,
     p.advanced ? `Đã trả trước −${formatK(p.advanced)}` : null,
-    skipped.length ? `Bỏ qua ${skipped.length} khoản` : null,
+    skipped.length ? `Không trả ${skipped.length} khoản` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -295,55 +290,27 @@ function PersonCard({
       >
         <div className="overflow-hidden">
           <div className="mx-4 mb-4 space-y-1.5 rounded-2xl bg-surface-2 p-3 text-sm">
-            <p className="pb-1 text-xs text-muted">
-              Bấm <b className="font-semibold">Bỏ qua</b> nếu {p.member.name} không cần trả khoản đó, phần tiền sẽ chia
-              lại cho những người còn lại.
-            </p>
-            {p.items.map(({ expense, share }) => {
-              const canSkip =
-                expense.split.mode === "equal" && expense.split.members.length > 1 && !expense.id.startsWith("tmp-");
-              return (
-                <div key={expense.id} className="flex min-h-8 items-center gap-2">
-                  <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ background: categoryColor(expense.category) }}
-                  />
-                  <span className="flex-1 truncate text-ink-2">{expense.title}</span>
-                  <span className="tabular">{formatVND(share)}</span>
-                  <SkipButton
-                    disabled={!canSkip}
-                    title={
-                      expense.split.mode === "custom"
-                        ? "Khoản chia riêng: sửa số tiền trong khoản chi"
-                        : canSkip
-                          ? undefined
-                          : "Khoản chỉ còn 1 người trả"
-                    }
-                    onClick={() => onSkip(expense, true)}
-                  >
-                    Bỏ qua
-                  </SkipButton>
-                </div>
-              );
-            })}
+            {p.items.map(({ expense, share }) => (
+              <div key={expense.id} className="flex items-center gap-2">
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ background: categoryColor(expense.category) }}
+                />
+                <span className="flex-1 truncate text-ink-2">{expense.title}</span>
+                <span className="tabular">{formatVND(share)}</span>
+              </div>
+            ))}
             {skipped.length > 0 && (
-              <div className="space-y-1.5 border-t border-line pt-2">
+              <div className="space-y-1.5 border-t border-line pt-1.5">
                 <p className="text-xs font-medium text-muted">Không cần trả</p>
                 {skipped.map((expense) => (
-                  <div key={expense.id} className="flex min-h-8 items-center gap-2 text-muted">
+                  <div key={expense.id} className="flex items-center gap-2 text-muted">
                     <span
                       className="size-2 shrink-0 rounded-full opacity-40"
                       style={{ background: categoryColor(expense.category) }}
                     />
                     <span className="flex-1 truncate line-through decoration-1">{expense.title}</span>
                     <span className="tabular">0đ</span>
-                    <SkipButton
-                      tone="restore"
-                      disabled={expense.id.startsWith("tmp-")}
-                      onClick={() => onSkip(expense, false)}
-                    >
-                      Tính lại
-                    </SkipButton>
                   </div>
                 ))}
               </div>
@@ -362,41 +329,14 @@ function PersonCard({
               <span>{receive ? "Được nhận lại" : "Cần đóng"}</span>
               <span className="tabular">{formatVND(Math.abs(p.due))}</span>
             </div>
+            <Button size="md" variant="secondary" className="mt-2 w-full bg-surface" onClick={onChooseItems}>
+              <ListChecks className="size-4" />
+              Chọn khoản {p.member.name} phải trả
+            </Button>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function SkipButton({
-  children,
-  onClick,
-  disabled,
-  title,
-  tone = "skip",
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  title?: string;
-  tone?: "skip" | "restore";
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={cx(
-        "h-7 w-[68px] shrink-0 rounded-full text-xs font-medium ring-1 transition active:scale-95 disabled:pointer-events-none disabled:opacity-30",
-        tone === "skip"
-          ? "text-ink-2 ring-line-strong hover:bg-surface hover:text-danger"
-          : "bg-surface text-ink ring-line-strong hover:text-good",
-      )}
-    >
-      {children}
-    </button>
   );
 }
 
